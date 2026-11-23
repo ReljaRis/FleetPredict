@@ -1,2 +1,5 @@
+node_modules
+dist
 .env
-.mcp.json
+*.local
+.DS_Store

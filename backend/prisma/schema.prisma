@@ -1,0 +1,437 @@
+// Fleet Predict data model.
+// Everything lives in the "fleet" Postgres schema. The existing "public" schema
+// (truck makes, models, engines, known issues) is a reference catalogue and is
+// never touched by Prisma.
+
+generator client {
+  provider        = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["fleet"]
+}
+
+enum Role {
+  OWNER
+  MANAGER
+  MECHANIC
+  DRIVER
+
+  @@schema("fleet")
+}
+
+enum VehicleStatus {
+  OPERATIONAL
+  IN_SERVICE
+  OUT_OF_SERVICE
+  HIGH_RISK
+
+  @@schema("fleet")
+}
+
+enum ComponentKey {
+  ENGINE
+  COOLING
+  BRAKES
+  TRANSMISSION
+  CLUTCH
+  TURBO
+  SUSPENSION
+  ELECTRICAL
+  FUEL
+  TIRES
+
+  @@schema("fleet")
+}
+
+enum MaintenanceCategory {
+  REGULAR_SERVICE
+  OIL_FILTER
+  ENGINE_REPAIR
+  COOLING
+  BRAKES
+  TRANSMISSION
+  CLUTCH
+  TURBO
+  SUSPENSION
+  ELECTRICAL
+  FUEL
+  TIRES
+  OTHER
+
+  @@schema("fleet")
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+
+  @@schema("fleet")
+}
+
+enum FaultStatus {
+  OPEN
+  UNDER_INSPECTION
+  RESOLVED
+
+  @@schema("fleet")
+}
+
+enum RiskCategory {
+  LOW
+  MODERATE
+  HIGH
+  CRITICAL
+
+  @@schema("fleet")
+}
+
+enum PredictionStatus {
+  ACTIVE
+  ACKNOWLEDGED
+  SCHEDULED
+  RESOLVED
+
+  @@schema("fleet")
+}
+
+enum ExplanationSource {
+  RULES
+  LLM
+
+  @@schema("fleet")
+}
+
+enum NotificationKind {
+  DOCUMENT
+  PREDICTION
+  SYSTEM
+
+  @@schema("fleet")
+}
+
+enum ReadingSource {
+  MANUAL
+  TRIP
+  SERVICE
+
+  @@schema("fleet")
+}
+
+model Company {
+  id               String   @id @default(cuid())
+  name             String
+  country          String   @default("")
+  vatId            String   @default("")
+  isDemo           Boolean  @default(false)
+  notifyEmail      Boolean  @default(true)
+  notifyInApp      Boolean  @default(true)
+  /// Days before expiry at which a document notification is created. 0 means "on expiry".
+  notifyThresholds Int[]    @default([30, 14, 7, 0])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  users        User[]
+  vehicles     Vehicle[]
+  readings     VehicleReading[]
+  trips        Trip[]
+  maintenance  MaintenanceRecord[]
+  faults       FaultReport[]
+  documents    Document[]
+  notifications Notification[]
+  predictions  Prediction[]
+  costs        ComponentCost[]
+  thresholds   ThresholdOverride[]
+
+  @@schema("fleet")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  companyId    String
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  assigned Vehicle[] @relation("AssignedDriver")
+
+  @@index([companyId])
+  @@schema("fleet")
+}
+
+model Vehicle {
+  id             String        @id @default(cuid())
+  companyId      String
+  fleetId        String
+  registration   String
+  vin            String
+  manufacturer   String
+  model          String
+  /// Trim or power class, for example "1845" on an Actros.
+  variant        String        @default("")
+  year           Int
+  category       String        @default("Tractor unit")
+  engineType     String        @default("")
+  powerKw        Int           @default(0)
+  fuelType       String        @default("Diesel")
+  displacementL  Decimal       @default(0) @db.Decimal(4, 1)
+  payloadKg      Int           @default(0)
+  bodyType       String        @default("")
+  imageUrl       String?
+  km             Int
+  engineHours    Int
+  avgDailyKm     Int           @default(0)
+  avgDailyHours  Decimal       @default(0) @db.Decimal(4, 1)
+  status         VehicleStatus @default(OPERATIONAL)
+  location       String        @default("")
+  purchaseDate   DateTime?     @db.Date
+  purchasePrice  Int?
+  driverId       String?
+  /// Driver who is not a user of the app.
+  driverName     String        @default("")
+  notes          String        @default("")
+  // Operating conditions used by the prediction engine
+  heavyLoads         Boolean   @default(false)
+  demandingTerrain   Boolean   @default(false)
+  longHaul           Boolean   @default(false)
+  urbanStopGo        Boolean   @default(false)
+  archived       Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  company     Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  driver      User?               @relation("AssignedDriver", fields: [driverId], references: [id], onDelete: SetNull)
+  readings    VehicleReading[]
+  trips       Trip[]
+  maintenance MaintenanceRecord[]
+  faults      FaultReport[]
+  documents   Document[]
+  predictions Prediction[]
+
+  @@unique([companyId, fleetId])
+  @@index([companyId, archived])
+  @@index([companyId, status])
+  @@schema("fleet")
+}
+
+model VehicleReading {
+  id          String        @id @default(cuid())
+  companyId   String
+  vehicleId   String
+  recordedAt  DateTime
+  km          Int
+  engineHours Int
+  source      ReadingSource @default(MANUAL)
+  createdAt   DateTime      @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, recordedAt])
+  @@index([companyId])
+  @@schema("fleet")
+}
+
+model Trip {
+  id          String   @id @default(cuid())
+  companyId   String
+  vehicleId   String
+  origin      String
+  destination String
+  departure   DateTime
+  arrival     DateTime
+  distanceKm  Int
+  hours       Decimal  @db.Decimal(5, 1)
+  driverName  String
+  loadKg      Int?
+  notes       String   @default("")
+  createdAt   DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, departure])
+  @@index([companyId])
+  @@schema("fleet")
+}
+
+model MaintenanceRecord {
+  id          String              @id @default(cuid())
+  companyId   String
+  vehicleId   String
+  date        DateTime            @db.Date
+  km          Int
+  engineHours Int
+  category    MaintenanceCategory
+  component   ComponentKey?
+  /// Scheduled work that is not a repair. Routine work resets service intervals but is not counted as a repeat repair.
+  routine     Boolean             @default(false)
+  description String
+  parts       String              @default("")
+  laborCost   Decimal             @default(0) @db.Decimal(10, 2)
+  partsCost   Decimal             @default(0) @db.Decimal(10, 2)
+  provider    String
+  notes       String              @default("")
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, date])
+  @@index([companyId, date])
+  @@schema("fleet")
+}
+
+model FaultReport {
+  id          String       @id @default(cuid())
+  companyId   String
+  vehicleId   String
+  date        DateTime     @db.Date
+  km          Int
+  engineHours Int
+  component   ComponentKey?
+  symptoms    String
+  severity    Severity
+  status      FaultStatus  @default(OPEN)
+  reportedBy  String
+  notes       String       @default("")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, date])
+  @@index([companyId, status])
+  @@schema("fleet")
+}
+
+model Document {
+  id         String   @id @default(cuid())
+  companyId  String
+  vehicleId  String
+  type       String
+  number     String
+  issueDate  DateTime @db.Date
+  expiryDate DateTime @db.Date
+  /// File storage is not part of the MVP. Only the name is kept for reference.
+  fileName   String?
+  notes      String   @default("")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, expiryDate])
+  @@index([vehicleId])
+  @@schema("fleet")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  companyId String
+  kind      NotificationKind
+  title     String
+  body      String
+  /// Vehicle the notification is about, if any.
+  vehicleId String?
+  /// One notification per document per threshold: `${documentId}:${threshold}:${expiryDate}`.
+  dedupKey  String?
+  /// IN_APP, or EMAIL_PENDING / EMAIL_SENT / EMAIL_FAILED when email delivery is involved.
+  channel   String           @default("IN_APP")
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, dedupKey])
+  @@index([companyId, read, createdAt])
+  @@schema("fleet")
+}
+
+/// One row per vehicle and component. Recalculated by the rule engine whenever the underlying records change.
+model Prediction {
+  id               String            @id @default(cuid())
+  companyId        String
+  vehicleId        String
+  component        ComponentKey
+  /// Prioritisation score from 0 to 100. NOT a failure probability.
+  score            Int
+  category         RiskCategory
+  /// Suggested inspection timeframe, for example "within 7 days".
+  timeframe        String
+  action           String
+  /// Snapshot of the data the engine read, so a result can be reproduced and audited.
+  inputs           Json
+  /// Data that was missing and limits the result.
+  missing          String[]
+  repairCost       Decimal?          @db.Decimal(10, 2)
+  preventiveCost   Decimal?          @db.Decimal(10, 2)
+  status           PredictionStatus  @default(ACTIVE)
+  explanation      Json?
+  explanationSource ExplanationSource?
+  calculatedAt     DateTime          @default(now())
+
+  company Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  vehicle Vehicle            @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  factors PredictionFactor[]
+
+  @@unique([vehicleId, component])
+  @@index([companyId, category])
+  @@schema("fleet")
+}
+
+model PredictionFactor {
+  id           String  @id @default(cuid())
+  predictionId String
+  code         String
+  label        String
+  detail       String
+  points       Int
+  /// Record that produced the factor (maintenance, fault, ...), if any.
+  sourceType   String?
+  sourceId     String?
+
+  prediction Prediction @relation(fields: [predictionId], references: [id], onDelete: Cascade)
+
+  @@index([predictionId])
+  @@schema("fleet")
+}
+
+/// Company-entered cost assumptions. Without them no financial estimate is shown.
+model ComponentCost {
+  companyId      String
+  component      ComponentKey
+  repairCost     Decimal?     @db.Decimal(10, 2)
+  preventiveCost Decimal?     @db.Decimal(10, 2)
+  intervalKm     Int?
+  intervalMonths Int?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, component])
+  @@schema("fleet")
+}
+
+/// Per-company override of engine thresholds that are not cost related.
+model ThresholdOverride {
+  companyId String
+  key       String
+  value     Float
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, key])
+  @@schema("fleet")
+}

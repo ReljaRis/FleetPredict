@@ -1,0 +1,97 @@
+@import 'tailwindcss';
+@import '@fontsource/schibsted-grotesk/400.css';
+@import '@fontsource/schibsted-grotesk/500.css';
+@import '@fontsource/schibsted-grotesk/600.css';
+@import '@fontsource/schibsted-grotesk/700.css';
+@import '@fontsource/sofia-sans-semi-condensed/500';
+@import '@fontsource/sofia-sans-semi-condensed/600';
+@import '@fontsource/sofia-sans-semi-condensed/700';
+@import '@fontsource/sofia-sans-semi-condensed/800';
+
+@theme {
+  --font-sans: 'Schibsted Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Sofia Sans Semi Condensed', 'Schibsted Grotesk', ui-sans-serif, sans-serif;
+
+  /* Surfaces */
+  --color-night: #0b0d10;
+  --color-night-2: #14171b;
+  --color-night-line: #272b31;
+  --color-canvas: #f2f1ed;
+  --color-surface: #ffffff;
+  --color-line: #dcd9d1;
+  --color-ink: #16181b;
+  --color-ink-2: #45494f;
+  --color-ink-3: #5f636a;
+  --color-sunken: #e8e6df;
+  --color-line-strong: #b9b5aa;
+
+  /* Brand accent: marker-light amber, taken from the hero photograph */
+  --color-amber: #f2a33a;
+  --color-amber-ink: #8a5300;
+
+  /* Risk scale (always paired with a label) */
+  --color-low: #2b7343;
+  --color-low-soft: #e1eee5;
+  --color-moderate-soft: #f6ecd2;
+  --color-high-soft: #fae5d8;
+  --color-critical-soft: #f8dcd9;
+  --color-moderate: #8c600a;
+  --color-high: #b04a15;
+  --color-critical: #b3261e;
+
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+html { scroll-behavior: smooth; }
+body { font-family: var(--font-sans); background: var(--color-canvas); color: var(--color-ink); -webkit-font-smoothing: antialiased; }
+.num { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.rise { animation: rise 700ms var(--ease-out) both; }
+
+/* Opening curtain on the start page. Timeline: name fades in (0 to 0.9s), holds, then the two halves part (1.6s to 2.6s). */
+@keyframes intro-name {
+  from { opacity: 0; letter-spacing: 0.28em; transform: translateY(10px); }
+  to { opacity: 1; letter-spacing: 0.01em; transform: none; }
+}
+@keyframes curtain-left { to { transform: translateX(-101%); } }
+@keyframes curtain-right { to { transform: translateX(101%); } }
+.intro-name { animation: intro-name 900ms var(--ease-out) 150ms both; }
+.curtain-left { animation: curtain-left 1000ms cubic-bezier(0.76, 0, 0.24, 1) 1600ms both; }
+.curtain-right { animation: curtain-right 1000ms cubic-bezier(0.76, 0, 0.24, 1) 1600ms both; }
+
+/* The sign-in and sign-up panels slide in from the side they came from, so the switch reads as the two swapping places. */
+@keyframes auth-from-left { from { opacity: 0; transform: translateX(-32px); } to { opacity: 1; transform: none; } }
+@keyframes auth-from-right { from { opacity: 0; transform: translateX(32px); } to { opacity: 1; transform: none; } }
+.auth-from-left { animation: auth-from-left 550ms var(--ease-out) both; }
+.auth-from-right { animation: auth-from-right 550ms var(--ease-out) both; }
+
+/*
+ * Drop-down lists: the browser arrow sits against the right edge, so it is replaced by one that is set in from the edge.
+ * Unlayered on purpose, so it wins over the padding utilities on individual selects and the arrow never overlaps the text.
+ */
+select:not([multiple]) {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2362666e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  /* Distance of the arrow from the right edge, and the room kept for it so lists do not grow wider. */
+  background-position: right var(--select-arrow-inset, 1.125rem) center;
+  background-size: 0.875rem;
+  padding-right: 2.125rem;
+  cursor: pointer;
+}
+select:not([multiple]):disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
