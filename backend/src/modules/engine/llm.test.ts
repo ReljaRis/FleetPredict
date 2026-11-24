@@ -98,3 +98,10 @@ describe('automatic model choice', () => {
     expect(pickModels([m('gemini-2.5-pro')])).toEqual([])
   })
 })
+
+describe('known issues in the facts', () => {
+  it('allows numbers that come from the documented problems', () => {
+    const withIssues = { ...facts, knownIssues: [{ title: 'Recall 0040215', description: 'Issued 2014-08-01.' }] }
+    expect(allowedNumbers(withIssues).has("0040215")).toBe(true)
+  })
+})

@@ -14,8 +14,9 @@ import { int } from '../../lib/validation.js'
 import { explainWithLlm, llmConfigured, llmModel } from './llm.provider.js'
 import { HttpError } from '../../lib/errors.js'
 import type { PredictionFacts } from './llm.js'
+import { knownIssuesFor } from './known-issues.js'
 
-const include = { factors: { orderBy: { points: 'desc' as const } }, vehicle: { select: { fleetId: true, registration: true, manufacturer: true, model: true, variant: true, km: true, year: true, engineHours: true } } }
+const include = { factors: { orderBy: { points: 'desc' as const } }, vehicle: { select: { fleetId: true, registration: true, manufacturer: true, model: true, variant: true, km: true, year: true, engineHours: true, engineCode: true } } }
 type Row = Prisma.PredictionGetPayload<{ include: typeof include }>
 
 const present = (p: Row) => ({
@@ -124,10 +125,12 @@ router.post(
     if (!llmConfigured()) throw new HttpError(503, 'The AI explanation layer is not configured on this server.')
     takeAllowance(a.companyId)
     // Only the calculated facts leave the server: no company, user or contact details.
+    const issues = await knownIssuesFor(p.vehicle.engineCode, p.component).catch(() => [])
     const facts: PredictionFacts = {
       vehicle: { fleetId: p.vehicle.fleetId, make: p.vehicle.manufacturer, model: p.vehicle.model, variant: p.vehicle.variant, year: p.vehicle.year, km: p.vehicle.km, engineHours: p.vehicle.engineHours },
       component: p.component, componentLabel: COMPONENTS[p.component].label, score: p.score, category: p.category, timeframe: p.timeframe,
       factors: p.factors.map((f) => ({ label: f.label, detail: f.detail, points: f.points })), missing: p.missing,
+      ...(issues.length ? { knownIssues: issues.slice(0, 4).map((i) => ({ title: i.title, description: i.description })) } : {}),
     }
     const out = await explainWithLlm(facts)
     // A failed attempt must never replace an AI explanation that is already stored.

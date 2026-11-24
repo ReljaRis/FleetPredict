@@ -12,6 +12,7 @@ export interface Vehicle {
   year: number
   category: string
   engineType: string
+  engineCode: string | null
   powerKw: number
   fuelType: string
   displacementL: number

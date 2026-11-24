@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { cloneElement, isValidElement, useEffect, useId, useMemo, useState, type ReactElement, type ReactNode } from 'react'
 import { api, ApiError } from '../lib/api'
 import { useApi } from '../lib/useApi'
 import { Button, Drawer, useToast } from './ui'
@@ -17,7 +17,7 @@ const input = 'mt-1.5 h-10 w-full rounded-md border bg-white px-3 text-[15px] te
 
 const EMPTY: Values = {
   fleetId: '', registration: '', vin: '', manufacturer: '', model: '', variant: '', year: String(new Date().getFullYear()), category: 'Tractor unit',
-  engineType: '', powerKw: '', displacementL: '', fuelType: 'Diesel', payloadKg: '', bodyType: '', km: '', engineHours: '', avgDailyKm: '', avgDailyHours: '',
+  engineType: '', engineCode: '', powerKw: '', displacementL: '', fuelType: 'Diesel', payloadKg: '', bodyType: '', km: '', engineHours: '', avgDailyKm: '', avgDailyHours: '',
   status: 'OPERATIONAL', location: '', purchaseDate: '', purchasePrice: '', driverId: '', driverName: '', notes: '',
   heavyLoads: false, demandingTerrain: false, longHaul: false, urbanStopGo: false,
 }
@@ -26,20 +26,23 @@ function fromVehicle(v: Vehicle): Values {
   const s = (n: number | null) => (n == null ? '' : String(n))
   return {
     fleetId: v.fleetId, registration: v.registration, vin: v.vin, manufacturer: v.manufacturer, model: v.model, variant: v.variant, year: s(v.year), category: v.category,
-    engineType: v.engineType, powerKw: v.powerKw ? s(v.powerKw) : '', displacementL: v.displacementL ? s(v.displacementL) : '', fuelType: v.fuelType, payloadKg: v.payloadKg ? s(v.payloadKg) : '',
+    engineType: v.engineType, engineCode: v.engineCode ?? '', powerKw: v.powerKw ? s(v.powerKw) : '', displacementL: v.displacementL ? s(v.displacementL) : '', fuelType: v.fuelType, payloadKg: v.payloadKg ? s(v.payloadKg) : '',
     bodyType: v.bodyType, km: s(v.km), engineHours: s(v.engineHours), avgDailyKm: v.avgDailyKm ? s(v.avgDailyKm) : '', avgDailyHours: v.avgDailyHours ? s(v.avgDailyHours) : '',
     status: v.status, location: v.location, purchaseDate: v.purchaseDate ?? '', purchasePrice: s(v.purchasePrice), driverId: v.driverId ?? '', driverName: v.driverName, notes: v.notes,
     heavyLoads: v.heavyLoads, demandingTerrain: v.demandingTerrain, longHaul: v.longHaul, urbanStopGo: v.urbanStopGo,
   }
 }
 
+// The label holds only the caption and points at the control by id. If the control sat inside the label,
+// a click on the caption or on the empty space of the label would focus it again and it could not be left in one click.
 function Field({ label, error, hint, span, required, children }: { label: string; error?: string; hint?: string; span?: boolean; required?: boolean; children: ReactNode }) {
+  const id = useId()
   return (
     <div className={span ? 'sm:col-span-2' : ''}>
-      <label className="block text-sm font-medium text-ink">
+      <label htmlFor={id} className="inline-block text-sm font-medium text-ink">
         {label} {required && <span className="text-critical" aria-hidden="true">*</span>}
-        {children}
       </label>
+      {isValidElement(children) ? cloneElement(children as ReactElement<{ id?: string }>, { id }) : children}
       {hint && !error && <p className="mt-1 text-xs text-ink-3">{hint}</p>}
       {error && <p className="mt-1 text-sm text-critical">{error}</p>}
     </div>
@@ -118,6 +121,7 @@ export function VehicleForm({ open, onClose, vehicle, onSaved }: { open: boolean
     setMakeSel(id)
     setModelSel('')
     setEngineSel('')
+    set('engineCode', '')
     set('model', '')
     if (id === OTHER || id === '') set('manufacturer', '')
     else set('manufacturer', makes.data?.find((m) => String(m.id) === id)?.name ?? '')
@@ -125,6 +129,7 @@ export function VehicleForm({ open, onClose, vehicle, onSaved }: { open: boolean
   function pickModel(id: string) {
     setModelSel(id)
     setEngineSel('')
+    set('engineCode', '')
     if (id === OTHER || id === '') set('model', '')
     else set('model', models.data?.find((m) => String(m.id) === id)?.name ?? '')
   }
@@ -133,7 +138,7 @@ export function VehicleForm({ open, onClose, vehicle, onSaved }: { open: boolean
     const e = engines.data?.[Number(i)]
     if (!e) return
     const bits = [e.family ?? e.code, e.displacementL ? `${e.displacementL} L` : null, e.cylinders ? `${e.cylinders}-cyl` : null, e.emission].filter(Boolean)
-    setV((x) => ({ ...x, engineType: bits.join(', '), powerKw: e.powerKw ? String(e.powerKw) : x.powerKw, displacementL: e.displacementL ? String(e.displacementL) : x.displacementL }))
+    setV((x) => ({ ...x, engineType: bits.join(', '), engineCode: e.code ?? '', powerKw: e.powerKw ? String(e.powerKw) : x.powerKw, displacementL: e.displacementL ? String(e.displacementL) : x.displacementL }))
   }
 
   async function submit() {
@@ -214,7 +219,7 @@ export function VehicleForm({ open, onClose, vehicle, onSaved }: { open: boolean
         <Field label="Production year" required error={E('year')} hint={generation ? `Catalogue generation: ${generation.name} (${generation.yearFrom}–${generation.yearTo ?? 'present'})` : undefined}>{text('year', { inputMode: 'numeric' })}</Field>
 
         {engineList.length > 0 && (
-          <Field label="Engine from catalogue" span hint="Fills engine type, power and displacement. You can still edit them.">
+          <Field label="Engine from catalogue" span hint="Fills engine type, power and displacement. Choosing an engine also lets the predictions use its documented problems.">
             <select value={engineSel} onChange={(e) => pickEngine(e.target.value)} className={`${input} border-line`}>
               <option value="">Choose…</option>
               {engineList.map((e, i) => (

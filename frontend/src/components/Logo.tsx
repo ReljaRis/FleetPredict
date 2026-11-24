@@ -1,13 +1,13 @@
-export function Logo({ className = '' }: { className?: string }) {
+/**
+ * The brand image already contains the name, so it is used on its own.
+ * It is a transparent PNG with a white truck, so it is meant for dark surfaces.
+ */
+const HEIGHT = { md: 'h-14', lg: 'h-16', nav: 'h-16' }
+
+export function Logo({ className = '', size = 'md' }: { className?: string; size?: 'md' | 'lg' | 'nav' }) {
   return (
-    <span className={`inline-flex items-center gap-2.5 ${className}`}>
-      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
-        <rect x="1" y="13" width="4" height="8" fill="currentColor" />
-        <rect x="7" y="9" width="4" height="12" fill="currentColor" />
-        <rect x="13" y="5" width="4" height="16" fill="currentColor" />
-        <rect x="19" y="1" width="3" height="20" fill="var(--color-amber)" />
-      </svg>
-      <span className="font-display text-[22px] font-semibold tracking-tight">Fleet Predict</span>
+    <span className={`inline-flex items-center ${className}`}>
+      <img src="/logo.png" alt="Fleet Predict" className={`w-auto ${HEIGHT[size]}`} />
     </span>
   )
 }

@@ -172,3 +172,31 @@ describe('financial estimate', () => {
     expect(estimate(10, 1000, 600).savings).toBe(-500)
   })
 })
+
+describe('documented problems of the engine model', () => {
+  const issue = (id: string, title: string) => ({ id, title, description: title, engineCode: 'MX-13' })
+  const withIssues = { TURBO: [issue('p1', 'Turbo oil line fault')], ENGINE: [issue('e1', 'EGR cooler leak'), issue('e2', 'EGR valve sticking'), issue('e3', 'Piston cracking'), issue('e4', 'Bearing failure'), issue('e5', 'AdBlue pump low pressure')] }
+  const linked = { ...truck104, engineCode: 'MX-13' }
+
+  it('adds a KNOWN_ISSUE factor that grows with the number of problems but stays capped', () => {
+    const res = scoreVehicle({ vehicle: linked, maintenance: history104, faults: [], knownIssues: withIssues, now })
+    const turbo = get(res, 'TURBO').factors.find((f) => f.code === 'KNOWN_ISSUE')!
+    const engine = get(res, 'ENGINE').factors.find((f) => f.code === 'KNOWN_ISSUE')!
+    expect(turbo.points).toBe(WEIGHTS.knownIssueBase)
+    expect(engine.points).toBe(WEIGHTS.knownIssueCap)
+    expect(turbo.sourceType).toBe('catalog')
+  })
+  it('alone never reaches the moderate threshold, so it cannot raise an alert by itself', () => {
+    expect(WEIGHTS.knownIssueCap).toBeLessThan(WEIGHTS.moderateFrom)
+  })
+  it('changes nothing for a component without documented problems and keeps the factors summing to the score', () => {
+    const base = scoreVehicle({ vehicle: linked, maintenance: history104, faults: [], now })
+    const res = scoreVehicle({ vehicle: linked, maintenance: history104, faults: [], knownIssues: withIssues, now })
+    expect(get(res, 'BRAKES').score).toBe(get(base, 'BRAKES').score)
+    for (const c of res.components) expect(c.factors.reduce((s, f) => s + f.points, 0)).toBe(Math.min(100, c.score))
+  })
+  it('tells the user when no catalogue engine is chosen', () => {
+    expect(scoreVehicle({ vehicle: truck104, maintenance: [], faults: [], now }).vehicleMissing.join(' ')).toMatch(/No engine from the catalogue/)
+    expect(scoreVehicle({ vehicle: linked, maintenance: [], faults: [], now }).vehicleMissing.join(' ')).not.toMatch(/No engine from the catalogue/)
+  })
+})

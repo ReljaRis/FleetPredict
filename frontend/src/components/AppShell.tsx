@@ -88,11 +88,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       )}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-line bg-white px-4 py-3 lg:hidden">
-          <button aria-label="Open menu" onClick={() => setOpen(true)} className="rounded p-1.5 hover:bg-sunken">
+        <header className="flex items-center gap-3 border-b border-night-line bg-night px-4 py-2 text-white lg:hidden">
+          <button aria-label="Open menu" onClick={() => setOpen(true)} className="rounded p-1.5 hover:bg-white/10">
             <Menu className="size-5" />
           </button>
-          <Logo className="text-ink" />
+          <Logo />
         </header>
         <main id="app-main" className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-[1360px] px-4 py-6 sm:px-8 sm:py-8">{children}</div>

@@ -8,7 +8,7 @@ export function SiteFooter() {
     <footer className="border-t border-white/10 bg-night text-white">
       <div className="mx-auto grid max-w-[1400px] gap-10 px-5 py-12 sm:px-8 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
         <div>
-          <Logo className="text-white" />
+          <Logo size="lg" />
           <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-white/60">
             Maintenance priorities for truck fleets, built from your own service history, faults and mileage.
           </p>
@@ -16,8 +16,10 @@ export function SiteFooter() {
         <nav aria-label="Product">
           <p className="text-sm font-semibold text-white/90">Product</p>
           <ul className="mt-3 space-y-2 text-[15px]">
+            <li><Link to="/#features" className={link}>Features</Link></li>
             <li><Link to="/#how" className={link}>How it works</Link></li>
-            <li><Link to="/#report" className={link}>Sample report</Link></li>
+            <li><Link to="/#report" className={link}>The score</Link></li>
+            <li><Link to="/#faq" className={link}>FAQ</Link></li>
           </ul>
         </nav>
         <nav aria-label="Account">

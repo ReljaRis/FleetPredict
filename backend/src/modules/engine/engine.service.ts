@@ -4,6 +4,7 @@ import { prisma } from '../../lib/prisma.js'
 import { generatePredictionNotifications } from '../notifications/notifications.service.js'
 import { WEIGHTS, type Weights } from './config.js'
 import { explainDeterministic } from './explain.js'
+import { loadKnownIssues, type KnownIssuesByEngine } from './known-issues.js'
 import { scoreVehicle } from './score.js'
 import { COMPONENT_KEYS, type ComponentAssumption, type ComponentKey, type EngineFault, type EngineMaintenance, type EngineVehicle, type VehicleResult } from './types.js'
 
@@ -28,13 +29,20 @@ interface Loaded {
   vehicles: EngineVehicle[]
   maintenance: Map<string, EngineMaintenance[]>
   faults: Map<string, EngineFault[]>
+  known: KnownIssuesByEngine
 }
+
+const issuesOf = (l: Loaded, v: EngineVehicle) => (v.engineCode ? Object.fromEntries(l.known.get(v.engineCode) ?? []) : undefined)
 
 async function load(companyId: string, vehicleId?: string): Promise<Loaded> {
   const where = { companyId, ...(vehicleId ? { id: vehicleId } : {}), archived: false }
   const vs = await prisma.vehicle.findMany({ where })
   const ids = vs.map((v) => v.id)
-  const [ms, fs] = await Promise.all([
+  const [known, ms, fs] = await Promise.all([
+    loadKnownIssues(vs.flatMap((v) => (v.engineCode ? [v.engineCode] : []))).catch((err) => {
+      console.error('Known issues could not be loaded:', err)
+      return new Map() as KnownIssuesByEngine
+    }),
     prisma.maintenanceRecord.findMany({ where: { companyId, vehicleId: { in: ids } } }),
     prisma.faultReport.findMany({ where: { companyId, vehicleId: { in: ids } } }),
   ])
@@ -44,7 +52,8 @@ async function load(companyId: string, vehicleId?: string): Promise<Loaded> {
     return m
   }
   return {
-    vehicles: vs.map((v) => ({ id: v.id, year: v.year, km: v.km, engineHours: v.engineHours, avgDailyKm: v.avgDailyKm, avgDailyHours: Number(v.avgDailyHours), heavyLoads: v.heavyLoads, demandingTerrain: v.demandingTerrain, longHaul: v.longHaul, urbanStopGo: v.urbanStopGo, purchaseDate: v.purchaseDate })),
+    known,
+    vehicles: vs.map((v) => ({ id: v.id, year: v.year, km: v.km, engineHours: v.engineHours, avgDailyKm: v.avgDailyKm, avgDailyHours: Number(v.avgDailyHours), heavyLoads: v.heavyLoads, demandingTerrain: v.demandingTerrain, longHaul: v.longHaul, urbanStopGo: v.urbanStopGo, purchaseDate: v.purchaseDate, engineCode: v.engineCode })),
     maintenance: group(ms, (m): EngineMaintenance => ({ id: m.id, date: m.date, km: m.km, engineHours: m.engineHours, category: m.category, component: m.component as ComponentKey | null, routine: m.routine, description: m.description })),
     faults: group(fs, (f): EngineFault => ({ id: f.id, date: f.date, km: f.km, component: f.component as ComponentKey | null, severity: f.severity, status: f.status, symptoms: f.symptoms })),
   }
@@ -55,7 +64,7 @@ export async function computeVehicle(companyId: string, vehicleId: string): Prom
   const [data, assumptions, weights] = await Promise.all([load(companyId, vehicleId), loadAssumptions(companyId), loadWeights(companyId)])
   const v = data.vehicles[0]
   if (!v) return null
-  return scoreVehicle({ vehicle: v, maintenance: data.maintenance.get(v.id) ?? [], faults: data.faults.get(v.id) ?? [], assumptions, weights })
+  return scoreVehicle({ vehicle: v, maintenance: data.maintenance.get(v.id) ?? [], faults: data.faults.get(v.id) ?? [], assumptions, weights, knownIssues: issuesOf(data, v) })
 }
 
 // Refreshes for the same company run one after another, so two writes in quick succession cannot collide.
@@ -75,7 +84,7 @@ export function refreshPredictions(companyId: string, vehicleId?: string): Promi
     const preds: Prisma.PredictionCreateManyInput[] = []
     const factors: Prisma.PredictionFactorCreateManyInput[] = []
     const results = new Map<string, VehicleResult>()
-    for (const v of data.vehicles) results.set(v.id, scoreVehicle({ vehicle: v, maintenance: data.maintenance.get(v.id) ?? [], faults: data.faults.get(v.id) ?? [], assumptions, weights, now }))
+    for (const v of data.vehicles) results.set(v.id, scoreVehicle({ vehicle: v, maintenance: data.maintenance.get(v.id) ?? [], faults: data.faults.get(v.id) ?? [], assumptions, weights, knownIssues: issuesOf(data, v), now }))
 
     await prisma.$transaction(
       async (tx) => {

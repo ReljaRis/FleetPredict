@@ -16,6 +16,16 @@ export interface EngineVehicle {
   longHaul: boolean
   urbanStopGo: boolean
   purchaseDate: Date | null
+  /** Code of the engine in the reference catalogue, if the vehicle was linked to one. */
+  engineCode?: string | null
+}
+
+/** A documented problem of an engine model from the reference catalogue. General knowledge, not a finding on this vehicle. */
+export interface KnownIssue {
+  id: string
+  title: string
+  description: string
+  engineCode: string
 }
 
 export interface EngineMaintenance {
@@ -52,7 +62,7 @@ export interface Factor {
   label: string
   detail: string
   points: number
-  sourceType?: 'maintenance' | 'fault'
+  sourceType?: 'maintenance' | 'fault' | 'catalog'
   sourceId?: string
 }
 

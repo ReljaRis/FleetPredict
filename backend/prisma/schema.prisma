@@ -181,6 +181,8 @@ model Vehicle {
   year           Int
   category       String        @default("Tractor unit")
   engineType     String        @default("")
+  /// Code of the engine in the reference catalogue (public.engines.code). Null when the engine was typed by hand.
+  engineCode     String?
   powerKw        Int           @default(0)
   fuelType       String        @default("Diesel")
   displacementL  Decimal       @default(0) @db.Decimal(4, 1)

@@ -18,6 +18,8 @@ export interface PredictionFacts {
   timeframe: string
   factors: Pick<Factor, 'label' | 'detail' | 'points'>[]
   missing: string[]
+  /** Documented problems of this engine model from the reference catalogue. General knowledge, not findings on this vehicle. */
+  knownIssues?: { title: string; description: string }[]
 }
 
 export const SYSTEM_PROMPT = [
@@ -28,6 +30,7 @@ export const SYSTEM_PROMPT = [
   'Do not mention any number that is not present in INPUT. Never write a number that is not copied from INPUT.',
   'The factors are ordered by how many points they add, so the first ones matter most.',
   'THE SUMMARY MUST BE SPECIFIC: name the vehicle by its fleetId and the component, state the score and category once, then explain the reasons by quoting the concrete figures from the two or three strongest factors (for example the kilometres since the last service against the interval, the reported symptom and its date, the number of repairs). Do not use vague phrases such as "a number of issues" or "several factors".',
+  'INPUT.knownIssues, when present, lists problems documented for this engine model in general. They are NOT confirmed on this vehicle: say "is documented for this engine" and never say the vehicle has the problem. Mention at most two of them, only where they fit the factors, and use them to make the inspect checks specific (for example check the EGR cooler for leaks). Do not copy numbers from them unless needed.',
   'If INPUT.missing is not empty, end the summary with one short sentence saying what data is missing and that it limits how far the result can be trusted.',
   'Write plain, direct English in short sentences, with no marketing language and no filler.',
   'Answer only as JSON with the keys: summary (3 to 5 sentences), inspect (3 to 6 short, specific checks that fit this component and the reported symptoms, not generic advice), urgency (one sentence on timing that repeats the given timeframe and says why), ifIgnored (one or two sentences on what could happen if it is ignored, worded as a possibility, never as certainty).',

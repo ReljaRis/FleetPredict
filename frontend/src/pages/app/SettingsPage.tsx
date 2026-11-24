@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { cloneElement, isValidElement, useEffect, useId, useState, type ReactElement, type ReactNode } from 'react'
 import { Plus } from 'lucide-react'
 import { Button, ErrorState, LoadingRows, useToast } from '../../components/ui'
 import { FormDrawer, type Field } from '../../components/FormDrawer'
@@ -31,12 +31,11 @@ function Section({ title, sub, children }: { title: string; sub?: string; childr
 }
 
 function Labeled({ label, error, hint, children }: { label: string; error?: string; hint?: string; children: ReactNode }) {
+  const id = useId()
   return (
     <div>
-      <label className="block">
-        <span className="block text-sm font-medium text-ink">{label}</span>
-        {children}
-      </label>
+      <label htmlFor={id} className="inline-block text-sm font-medium text-ink">{label}</label>
+      {isValidElement(children) ? cloneElement(children as ReactElement<{ id?: string }>, { id }) : children}
       {hint && !error && <p className="mt-2 text-xs text-ink-3">{hint}</p>}
       {error && <p className="mt-2 text-sm text-critical">{error}</p>}
     </div>

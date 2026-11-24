@@ -18,6 +18,7 @@ export const vehicleInput = z.object({
   year: int('Year', 1990, new Date().getFullYear() + 1),
   category: z.enum(CATEGORIES),
   engineType: text(120).default(''),
+  engineCode: text(60).nullable().optional().or(z.literal('').transform(() => null)),
   powerKw: int('Power', 0, 2000).default(0),
   fuelType: z.enum(FUELS).default('Diesel'),
   displacementL: z.coerce.number().min(0).max(30).default(0),

@@ -1,5 +1,5 @@
 import { CATEGORY_TO_COMPONENT, COMPONENTS, TIMEFRAME, WEIGHTS, categoryOf, faultPoints, type Weights } from './config.js'
-import { COMPONENT_KEYS, type ComponentAssumption, type ComponentKey, type ComponentResult, type EngineFault, type EngineMaintenance, type EngineVehicle, type Factor, type VehicleResult } from './types.js'
+import { COMPONENT_KEYS, type ComponentAssumption, type ComponentKey, type ComponentResult, type EngineFault, type EngineMaintenance, type EngineVehicle, type Factor, type KnownIssue, type VehicleResult } from './types.js'
 
 const MONTH = 30.4375 * 86_400_000
 const fmt = (n: number) => Math.round(n).toLocaleString('en-GB')
@@ -12,6 +12,8 @@ export interface ScoreInput {
   /** Company assumptions by component. Missing entries are treated as "not provided". */
   assumptions?: Partial<Record<ComponentKey, ComponentAssumption>>
   weights?: Partial<Weights>
+  /** Documented problems of the vehicle's engine model, by component. Absent means "not looked up". */
+  knownIssues?: Partial<Record<ComponentKey, KnownIssue[]>>
   now?: Date
 }
 
@@ -32,6 +34,8 @@ export function scoreVehicle(input: ScoreInput): VehicleResult {
   const unassigned = input.faults.filter((f) => f.status !== 'RESOLVED' && !f.component).length
   if (unassigned > 0) vehicleMissing.push(`${unassigned} open fault report${unassigned > 1 ? 's have' : ' has'} no affected component, so ${unassigned > 1 ? 'they do' : 'it does'} not influence any component score.`)
   if (v.avgDailyKm === 0) vehicleMissing.push('Average daily mileage is not set, so usage-based reasoning is limited.')
+
+  if (!v.engineCode) vehicleMissing.push('No engine from the catalogue is chosen for this vehicle, so documented problems of its engine are not taken into account.')
 
   const components = COMPONENT_KEYS.map((key) => scoreComponent(key, input, w, now, v))
   return { components, vehicleMissing }
@@ -123,7 +127,21 @@ function scoreComponent(key: ComponentKey, input: ScoreInput, w: Weights, now: D
   ]
   for (const [on, k, label] of cond) if (on) add({ code: `COND_${k.toUpperCase()}`, label, detail: `${label} is marked for this vehicle and stresses the ${cfg.label.toLowerCase()}.`, points: cfg.conditions[k] })
 
-  // 6. Usage intensity ----------------------------------------------------------------------------------
+  // 6. Documented problems of this engine model ---------------------------------------------------------
+  const known = input.knownIssues?.[key] ?? []
+  if (known.length) {
+    const shown = known.slice(0, 2).map((k) => k.title).join('; ')
+    add({
+      code: 'KNOWN_ISSUE',
+      label: 'Documented problem of this engine',
+      detail: `${known.length} documented problem${known.length > 1 ? 's' : ''} of the ${known[0].engineCode} engine concern the ${cfg.label.toLowerCase()}, for example: ${shown}. This is general knowledge about the engine model, not a finding on this vehicle.`,
+      points: Math.min(w.knownIssueCap, w.knownIssueBase + (known.length - 1) * w.knownIssueExtra),
+      sourceType: 'catalog',
+      sourceId: known[0].id,
+    })
+  }
+
+  // 7. Usage intensity ----------------------------------------------------------------------------------
   if (cfg.usage === 'km' && v.avgDailyKm >= w.highDailyKm) add({ code: 'USAGE', label: 'High daily mileage', detail: `The vehicle averages ${fmt(v.avgDailyKm)} km per day.`, points: w.usagePoints })
   if (cfg.usage === 'hours' && v.avgDailyHours >= w.highDailyHours) add({ code: 'USAGE', label: 'Long daily operating hours', detail: `The engine averages ${v.avgDailyHours} hours per day.`, points: w.usagePoints })
 

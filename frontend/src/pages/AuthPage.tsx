@@ -133,7 +133,7 @@ export default function AuthPage({ mode }: { mode: Mode }) {
   )
 
   return (
-    <div className="flex min-h-[calc(100svh-4rem)] flex-col bg-night">
+    <div className="flex min-h-[calc(100svh-5.5rem)] flex-col bg-night">
       {/* On small screens only the form is shown. From lg up the panels sit side by side and swap sides between the two pages. */}
       <div className="grid flex-1 lg:grid-cols-2">
         {isLogin ? (

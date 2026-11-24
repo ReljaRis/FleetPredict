@@ -12,6 +12,7 @@ export interface Weights {
   repeatSymptomDays: number; repeatSymptomPoints: number; repeatSymptomExtra: number; repeatSymptomCap: number
   repeatWindowKm: number; repeatTwo: number; repeatThreeOrMore: number
   ageSteps: [number, number][]; mileageSteps: [number, number][]
+  knownIssueBase: number; knownIssueExtra: number; knownIssueCap: number
   highDailyKm: number; highDailyHours: number; usagePoints: number
   moderateFrom: number; highFrom: number; criticalFrom: number
 }
@@ -46,6 +47,11 @@ export const WEIGHTS: Weights = {
   // Vehicle age (years) and total mileage steps, scaled by each component's wear factor.
   ageSteps: [[10, 8], [7, 5], [4, 3]],
   mileageSteps: [[800_000, 7], [500_000, 4], [300_000, 2]],
+  // Documented problems of this engine model (reference catalogue). The cap stays below the moderate threshold:
+  // it raises priority together with other evidence but never raises an alert alone.
+  knownIssueBase: 5,
+  knownIssueExtra: 2,
+  knownIssueCap: 10,
   highDailyKm: 450,
   highDailyHours: 8,
   usagePoints: 3,
