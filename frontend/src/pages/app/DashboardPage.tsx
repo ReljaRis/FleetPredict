@@ -30,7 +30,7 @@ function Stat({ label, value, sub, tone }: { label: string; value: string; sub?:
   return (
     <div className="border-t-2 border-night pt-3">
       <dt className="text-sm text-ink-3">{label}</dt>
-      <dd className={`num mt-1 whitespace-nowrap font-display text-4xl font-semibold leading-none ${tone === 'bad' ? 'text-critical' : tone === 'good' ? 'text-low' : ''}`}>{value}</dd>
+      <dd className={`num mt-1 whitespace-nowrap font-display text-4xl font-semibold leading-none 2xl:text-3xl ${tone === 'bad' ? 'text-critical' : tone === 'good' ? 'text-low' : ''}`}>{value}</dd>
       {sub && <p className="num mt-1.5 text-sm text-ink-3">{sub}</p>}
     </div>
   )
@@ -87,7 +87,7 @@ export default function DashboardPage() {
 
       <p className="mt-5 max-w-3xl font-display text-3xl font-medium leading-tight">{headline.join(' ')}</p>
 
-      <dl className="mt-8 grid grid-cols-2 gap-x-10 gap-y-9 sm:grid-cols-4">
+      <dl className="mt-8 grid grid-cols-2 gap-x-10 gap-y-9 sm:grid-cols-4 2xl:grid-cols-8 2xl:gap-x-6">
         <Stat label="Vehicles" value={fmtNum(c.vehicles)} sub={`${c.operational} operational`} />
         <Stat label="In service" value={fmtNum(c.inService)} sub={c.outOfService ? `${c.outOfService} out of service` : undefined} />
         <Stat label="High or critical" value={fmtNum(c.elevatedRisk)} sub="vehicles" tone={c.elevatedRisk ? 'bad' : undefined} />

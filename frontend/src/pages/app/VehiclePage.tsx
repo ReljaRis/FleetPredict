@@ -69,8 +69,8 @@ export default function VehiclePage() {
       <header className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-            <h1 className="num font-display text-5xl font-semibold leading-none tracking-tight">{v.fleetId}</h1>
-            <p className="text-xl text-ink-2">{vehicleTitle(v)} <span className="text-ink-3">· {v.year}</span></p>
+            <h1 className="font-display text-4xl font-semibold leading-none tracking-tight sm:text-5xl">{vehicleTitle(v)}</h1>
+            <p className="num text-xl text-ink-2">{v.fleetId} <span className="text-ink-3">· {v.year}</span></p>
           </div>
           <p className="num mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-ink-3">
             <span>{v.registration}</span>

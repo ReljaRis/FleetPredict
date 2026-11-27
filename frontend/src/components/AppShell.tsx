@@ -27,22 +27,22 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const rail = (
     <nav aria-label="Main" className="flex h-full flex-col bg-night text-white">
-      <div className="flex items-center justify-between px-5 pb-4 pt-5">
-        <Logo />
-        <span className="flex items-center gap-1">
-          <NotificationBell tone="dark" />
-          <button className="rounded p-1 text-white/60 hover:text-white lg:hidden" aria-label="Close menu" onClick={() => setOpen(false)}>
-            <X className="size-5" />
-          </button>
-        </span>
+      <div className="relative flex items-center justify-center px-5 pb-4 pt-5">
+        <Logo size="rail" />
+        <button className="absolute right-3 top-3 rounded p-1 text-white/60 hover:text-white lg:hidden"aria-label="Close menu" onClick={() => setOpen(false)}>
+          <X className="size-5" />
+        </button>
       </div>
-      <div className="mx-5 mb-4 border-y border-night-line py-3">
-        <p className="truncate text-[15px] font-medium">{company.name}</p>
-        {company.isDemo && (
-          <div className="mt-1.5">
-            <DemoTag />
-          </div>
-        )}
+      <div className="mx-5 mb-4 flex items-center gap-2 border-y border-night-line py-3">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[15px] font-medium">{company.name}</p>
+          {company.isDemo && (
+            <div className="mt-1.5">
+              <DemoTag />
+            </div>
+          )}
+        </div>
+        <NotificationBell tone="dark" />
       </div>
       <ul className="flex-1 space-y-0.5 px-3">
         {NAV.map(({ to, label, icon: Icon, ...rest }) => (
@@ -80,7 +80,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-canvas text-ink">
-      <aside className="hidden w-60 shrink-0 lg:block">{rail}</aside>
+      <aside className="hidden w-72 shrink-0 lg:block">{rail}</aside>
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-night/60" onClick={() => setOpen(false)} />
@@ -95,7 +95,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Logo />
         </header>
         <main id="app-main" className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-[1360px] px-4 py-6 sm:px-8 sm:py-8">{children}</div>
+          <div className="w-full px-4 py-6 sm:px-8 sm:py-8">{children}</div>
         </main>
       </div>
     </div>

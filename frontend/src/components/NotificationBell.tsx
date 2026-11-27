@@ -53,7 +53,7 @@ export function NotificationBell({ tone = 'dark' }: { tone?: 'dark' | 'light' })
         aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
         className={`relative rounded-md p-2 transition-colors ${tone === 'dark' ? 'text-white/70 hover:bg-night-2 hover:text-white' : 'text-ink-2 hover:bg-sunken hover:text-ink'}`}
       >
-        <Bell className="size-[18px]" />
+        <Bell className="size-6" />
         {unread > 0 && <span className="num absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-critical px-1 text-[10px] font-semibold leading-4 text-white">{unread > 99 ? '99+' : unread}</span>}
       </button>
 
